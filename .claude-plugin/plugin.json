@@ -1,0 +1,22 @@
+{
+  "name": "2025-compiled",
+  "version": "1.0.0",
+  "description": "Your 2025 Compiled - a Spotify Wrapped-style year-in-review of your Claude Code usage",
+  "author": {
+    "name": "Miguel Rios",
+    "email": "miguel@parcha.ai",
+    "url": "https://parcha.ai"
+  },
+  "homepage": "https://github.com/miguelrios/2025-compiled",
+  "repository": "https://github.com/miguelrios/2025-compiled",
+  "license": "MIT",
+  "keywords": [
+    "compiled",
+    "wrapped",
+    "year-in-review",
+    "statistics",
+    "analytics",
+    "2025",
+    "parcha"
+  ]
+}

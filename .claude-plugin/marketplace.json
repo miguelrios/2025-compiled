@@ -1,0 +1,25 @@
+{
+  "name": "miguelrios-2025-compiled",
+  "owner": {
+    "name": "Miguel Rios",
+    "email": "miguel@parcha.ai"
+  },
+  "metadata": {
+    "description": "2025 Compiled - Made by Miguel @ Parcha.ai",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "2025-compiled",
+      "description": "Your 2025 Compiled - a Spotify Wrapped-style year-in-review of your Claude Code usage",
+      "version": "1.0.0",
+      "author": {
+        "name": "Miguel Rios @ Parcha.ai"
+      },
+      "source": "./",
+      "category": "analytics",
+      "tags": ["compiled", "wrapped", "statistics", "visualization", "year-in-review", "2025"],
+      "keywords": ["compiled", "wrapped", "analytics", "productivity"]
+    }
+  ]
+}

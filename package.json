@@ -1,0 +1,42 @@
+{
+  "name": "2025-compiled",
+  "version": "1.0.0",
+  "description": "2025 Compiled - Your year in review with Claude Code",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "2025-compiled": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "lint": "biome check .",
+    "lint:fix": "biome check --apply .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@clack/prompts": "^0.11.0",
+    "chalk": "^5.6.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.1.14",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "compiled",
+    "wrapped",
+    "year-in-review",
+    "2025",
+    "claude-code",
+    "parcha"
+  ],
+  "author": "Miguel Rios @ Parcha.ai",
+  "license": "MIT"
+}

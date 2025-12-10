@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2025 COMPILED</title>
+  <meta property="og:title" content="My 2025 Compiled - Year in Review with Claude Code">
+  <meta property="og:description" content="Check out my year coding with Claude!">
+  <meta property="og:image" content="https://blog.parcha.dev/static/2025-compiled/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brutal: {
+              black: '#0A0A0A',
+              red: '#CC0000',
+              green: '#004400',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    .story { opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
+    .story.active { opacity: 1; visibility: visible; }
+    .indicator { flex: 1; height: 4px; background: rgba(255,255,255,0.2); }
+    .indicator.active { background: rgba(255,255,255,0.5); }
+    .indicator.complete { background: white; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes persona { 0% { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+    .animate-fadeIn { animation: fadeIn 0.5s ease forwards; }
+    .animate-persona { animation: persona 0.8s ease forwards; }
+    @media (min-width: 768px) { #indicators { max-width: 430px; left: 50%; transform: translateX(-50%); } }
+  </style>
+</head>
+<body class="font-mono bg-brutal-black text-white min-h-screen overflow-hidden select-none">
+  <!-- Loading state -->
+  <div id="loading" class="fixed inset-0 flex items-center justify-center bg-brutal-black z-50">
+    <div class="text-center">
+      <div class="text-4xl mb-4">⏳</div>
+      <div class="text-xl tracking-wider">LOADING...</div>
+    </div>
+  </div>
+
+  <!-- Error state -->
+  <div id="error" class="fixed inset-0 flex items-center justify-center bg-brutal-black z-50 hidden">
+    <div class="text-center px-8">
+      <div class="text-6xl mb-4">❌</div>
+      <div class="text-xl tracking-wider mb-4">NO DATA FOUND</div>
+      <div class="text-sm opacity-60">Generate your own at:</div>
+      <a href="https://github.com/miguelrios/2025-compiled" class="text-white underline mt-2 block">github.com/miguelrios/2025-compiled</a>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="fixed top-0 left-0 right-0 h-2 bg-white/10 z-50">
+    <div class="h-full bg-white transition-all duration-200" id="progress" style="width: 0%"></div>
+  </div>
+
+  <!-- Story indicators -->
+  <div class="fixed top-6 left-8 right-8 lg:left-16 lg:right-16 flex gap-1 z-40" id="indicators"></div>
+
+  <!-- Stories container -->
+  <div class="stories fixed inset-0" id="stories"></div>
+
+  <script>
+    // Image base URL - use local for testing, CDN for prod
+    const IMG_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? './images'
+      : 'https://blog.parcha.dev/static/2025-compiled/images';
+
+    // Decode data from URL with robust error handling
+    function decodeData() {
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get('d');
+      if (!encoded) {
+        console.log('No data parameter found in URL');
+        return null;
+      }
+
+      try {
+        // URL-safe base64 decode (reverse - to +, _ to /, add padding)
+        let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) base64 += '=';
+
+        // Validate base64 characters
+        if (!/^[A-Za-z0-9+/=]+$/.test(base64)) {
+          throw new Error('Invalid base64 characters in data');
+        }
+
+        // Base64 decode
+        let binary;
+        try {
+          binary = atob(base64);
+        } catch (e) {
+          throw new Error('Failed to decode base64: ' + e.message);
+        }
+
+        // Convert to bytes
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+
+        // Decompress with pako
+        let decompressed;
+        try {
+          decompressed = pako.inflate(bytes, { to: 'string' });
+        } catch (e) {
+          throw new Error('Failed to decompress data: ' + e.message);
+        }
+
+        // Parse JSON
+        let data;
+        try {
+          data = JSON.parse(decompressed);
+        } catch (e) {
+          throw new Error('Failed to parse JSON: ' + e.message);
+        }
+
+        // Validate required fields
+        if (!data.metrics || !data.timeline || !data.claude) {
+          throw new Error('Missing required data fields (metrics, timeline, or claude)');
+        }
+
+        return data;
+      } catch (e) {
+        console.error('Failed to decode data:', e.message);
+        return null;
+      }
+    }
+
+    // Format numbers (1234567 -> 1.2M)
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    // Format hour (15 -> 3pm)
+    function formatHour(hour) {
+      if (hour === 0) return '12am';
+      if (hour === 12) return '12pm';
+      if (hour < 12) return hour + 'am';
+      return (hour - 12) + 'pm';
+    }
+
+    // Get time of day
+    function getTimeOfDay(hour) {
+      if (hour >= 5 && hour < 12) return 'morning';
+      if (hour >= 12 && hour < 17) return 'afternoon';
+      if (hour >= 17 && hour < 21) return 'evening';
+      return 'night';
+    }
+
+    // Generate 24-hour clock SVG
+    function generateClockSVG(hourlyHeatmap, peakHour) {
+      const maxActivity = Math.max(...hourlyHeatmap, 1);
+      const size = 240, center = size / 2, outerRadius = 85, innerRadius = 50;
+      let segments = [];
+
+      for (let hour = 0; hour < 24; hour++) {
+        const activity = hourlyHeatmap[hour] || 0;
+        const intensity = activity / maxActivity;
+        const opacity = activity === 0 ? 0.1 : 0.2 + (intensity * 0.8);
+        const isPeak = hour === peakHour;
+
+        const startAngle = (hour * 15 - 90) * (Math.PI / 180);
+        const endAngle = ((hour + 1) * 15 - 90) * (Math.PI / 180);
+
+        const x1Outer = center + outerRadius * Math.cos(startAngle);
+        const y1Outer = center + outerRadius * Math.sin(startAngle);
+        const x2Outer = center + outerRadius * Math.cos(endAngle);
+        const y2Outer = center + outerRadius * Math.sin(endAngle);
+        const x1Inner = center + innerRadius * Math.cos(endAngle);
+        const y1Inner = center + innerRadius * Math.sin(endAngle);
+        const x2Inner = center + innerRadius * Math.cos(startAngle);
+        const y2Inner = center + innerRadius * Math.sin(startAngle);
+
+        const path = `M ${x1Outer} ${y1Outer} A ${outerRadius} ${outerRadius} 0 0 1 ${x2Outer} ${y2Outer} L ${x1Inner} ${y1Inner} A ${innerRadius} ${innerRadius} 0 0 0 ${x2Inner} ${y2Inner} Z`;
+
+        segments.push(`<path d="${path}" fill="white" fill-opacity="${isPeak ? 1 : opacity}" stroke="${isPeak ? 'white' : 'rgba(255,255,255,0.3)'}" stroke-width="1"/>`);
+
+        if (hour % 6 === 0) {
+          const labelRadius = outerRadius + 12;
+          const midAngle = (hour * 15 - 90) * (Math.PI / 180);
+          const labelX = center + labelRadius * Math.cos(midAngle);
+          const labelY = center + labelRadius * Math.sin(midAngle);
+          const label = hour === 0 ? '12A' : hour === 6 ? '6A' : hour === 12 ? '12P' : '6P';
+          segments.push(`<text x="${labelX}" y="${labelY}" fill="white" fill-opacity="0.6" font-size="10" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono">${label}</text>`);
+        }
+      }
+
+      return `<svg viewBox="0 0 ${size} ${size}" class="w-32 h-32 lg:w-44 lg:h-44">${segments.join('')}</svg>`;
+    }
+
+    // Generate heatmap calendar
+    function generateHeatmap(dailyActivity) {
+      const values = Object.values(dailyActivity);
+      const maxActivity = Math.max(...values, 1);
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 29);
+
+      let days = [];
+      const startDayOfWeek = startDate.getDay();
+
+      for (let i = 0; i < startDayOfWeek; i++) {
+        days.push(`<div class="w-4 h-4 lg:w-6 lg:h-6"></div>`);
+      }
+
+      let currentDate = new Date(startDate);
+      while (currentDate <= today) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const activity = dailyActivity[dateStr] || 0;
+
+        let level = 0;
+        if (activity > 0) {
+          const ratio = activity / maxActivity;
+          if (ratio < 0.25) level = 1;
+          else if (ratio < 0.5) level = 2;
+          else if (ratio < 0.75) level = 3;
+          else level = 4;
+        }
+
+        const opacityClasses = ['bg-white/10', 'bg-white/30', 'bg-white/50', 'bg-white/75', 'bg-white'];
+        const dayNum = currentDate.getDate();
+
+        days.push(`<div class="w-4 h-4 lg:w-6 lg:h-6 ${opacityClasses[level]} flex items-center justify-center text-[6px] lg:text-[8px] ${level > 2 ? 'text-brutal-black' : 'text-white/50'}">${dayNum}</div>`);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      return days.join('');
+    }
+
+    // Day personas
+    const DAY_PERSONAS = {
+      0: { name: "THE SUNDAY SCARIES", emoji: "😰", tagline: "Prepping for Monday, one commit at a time" },
+      1: { name: "THE MONDAY MANIAC", emoji: "💪", tagline: "Fresh week, fresh bugs to squash" },
+      2: { name: "THE TUESDAY GRINDER", emoji: "⚙️", tagline: "Head down, code flowing" },
+      3: { name: "THE HUMP DAY HERO", emoji: "🐪", tagline: "Halfway there, still shipping" },
+      4: { name: "THE THURSDAY THRASHER", emoji: "🎸", tagline: "Almost Friday energy" },
+      5: { name: "THE FRIDAY DEPLOYER", emoji: "🔥", tagline: "YOLO deploying to prod" },
+      6: { name: "THE SATURDAY HACKER", emoji: "🌙", tagline: "Side projects don't build themselves" },
+    };
+
+    // Generate all stories HTML
+    function generateStories(data) {
+      const m = data.metrics;
+      const t = data.timeline;
+      const c = data.claude; // Claude-generated content
+
+      // Top languages
+      const langEntries = Object.entries(m.languages).sort((a, b) => b[1] - a[1]);
+      const totalLangCount = langEntries.reduce((sum, [_, count]) => sum + count, 0);
+      const topLangs = langEntries.slice(0, 3).map(([lang, count]) => ({
+        lang, percent: totalLangCount > 0 ? Math.round((count / totalLangCount) * 100) : 0
+      }));
+      const topLang = topLangs[0]?.lang || 'code';
+
+      // Day stats
+      const weekdayTotals = t.weekdayTotals;
+      const total = weekdayTotals.reduce((a, b) => a + b, 0);
+      const peakDayIndex = weekdayTotals.indexOf(Math.max(...weekdayTotals));
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayStats = weekdayTotals.map((count, i) => ({
+        day: dayNames[i],
+        percent: total > 0 ? Math.round((count / total) * 100) : 0
+      }));
+      const dayPersona = DAY_PERSONAS[peakDayIndex];
+
+      return `
+    <!-- STORY 1: Intro -->
+    <div class="story active absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-90" style="background-image: url('${IMG_BASE}/personas/christmas.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-10">COMPILED</div>
+        <h1 class="text-[25vw] lg:text-[20vw] font-extrabold leading-none tracking-tight">2025</h1>
+        <div class="text-sm lg:text-lg tracking-[0.3em] opacity-50 animate-pulse mt-8 lg:mt-12">TAP OR CLICK →</div>
+      </div>
+    </div>
+
+    <!-- STORY 2: Prompts -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-60" style="background-image: url('${IMG_BASE}/festive/prompts.jpg');"></div>
+      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-8">PAST 30 DAYS</div>
+        <div class="text-[18vw] lg:text-[15vw] font-extrabold leading-none">${formatNumber(m.totalPrompts)}</div>
+        <div class="text-xl lg:text-4xl font-extrabold tracking-[0.2em] mt-2 lg:mt-6">PROMPTS</div>
+        <div class="text-sm lg:text-xl opacity-60 mt-4 lg:mt-8">to Claude</div>
+      </div>
+    </div>
+
+    <!-- STORY 3: Lines -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-70" style="background-image: url('${IMG_BASE}/festive/building.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/80"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-8">CLAUDE WROTE</div>
+        <div class="text-[15vw] lg:text-[12vw] font-extrabold leading-none">${formatNumber(m.linesWritten)}</div>
+        <div class="text-xl lg:text-4xl font-extrabold tracking-[0.2em] mt-2 lg:mt-6">LINES</div>
+        <div class="text-sm lg:text-xl opacity-70 mt-4 lg:mt-8">of code for you</div>
+      </div>
+    </div>
+
+    <!-- STORY 4: Languages -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-60" style="background-image: url('${IMG_BASE}/festive/languages.jpg');"></div>
+      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-8">YOUR STACK</div>
+        <div class="text-[22vw] lg:text-[18vw] font-extrabold leading-none">.${topLang}</div>
+        <div class="mt-6 lg:mt-12 max-w-[280px] lg:max-w-[500px] mx-auto">
+          ${topLangs.map((item, i) => `
+            <div class="flex items-center gap-3 lg:gap-6 mb-2 lg:mb-4">
+              <span class="w-7 h-7 lg:w-12 lg:h-12 bg-white text-brutal-black flex items-center justify-center font-extrabold text-sm lg:text-xl">${i + 1}</span>
+              <span class="w-14 lg:w-24 font-bold text-sm lg:text-xl">.${item.lang}</span>
+              <span class="flex-1 h-1.5 lg:h-3 bg-white/30"><span class="block h-full bg-white" style="width: ${item.percent}%"></span></span>
+              <span class="text-sm lg:text-xl font-bold">${item.percent}%</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 5: You're Right -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-red overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-40" style="background-image: url('${IMG_BASE}/festive/chat.jpg');"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-8">CLAUDE SAID</div>
+        <div class="text-lg lg:text-3xl italic mb-4 lg:mb-8">"You're absolutely right"</div>
+        <div class="text-[20vw] lg:text-[15vw] font-extrabold leading-none">${m.youreRight}</div>
+        <div class="text-xl lg:text-4xl font-extrabold tracking-[0.2em] mt-2 lg:mt-6">TIMES</div>
+      </div>
+    </div>
+
+    <!-- STORY 6: Vibe -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/vibe.jpg');"></div>
+      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-8">YOUR VIBE</div>
+        <div class="text-6xl lg:text-9xl mb-2 lg:mb-6">${c.vibeEmoji}</div>
+        <div class="text-[9vw] lg:text-[7vw] font-extrabold leading-tight">${c.vibeName}</div>
+        <div class="text-sm lg:text-2xl opacity-60 mt-4 lg:mt-8 max-w-[280px] lg:max-w-[600px] mx-auto">${c.vibeDesc}</div>
+      </div>
+    </div>
+
+    <!-- STORY 7: How You Talk -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/commander.jpg');"></div>
+      <div class="absolute inset-0 bg-black/60"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-12">HOW YOU TALK</div>
+        <div class="max-w-[300px] lg:max-w-[600px] mx-auto space-y-4 lg:space-y-6">
+          <div class="text-base lg:text-2xl font-medium">${c.talkStyle1}</div>
+          <div class="text-base lg:text-2xl font-medium">${c.talkStyle2}</div>
+          <div class="text-base lg:text-2xl font-medium">${c.talkStyle3}</div>
+          <div class="text-base lg:text-2xl font-medium">${c.talkStyle4}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 8: Peak Hour -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-70" style="background-image: url('${IMG_BASE}/festive/night.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-6">PEAK HOUR</div>
+        <div class="text-[15vw] lg:text-[12vw] font-extrabold leading-none">${formatHour(t.peakHour)}</div>
+        <div class="text-base lg:text-2xl opacity-70 mt-2 lg:mt-4">${getTimeOfDay(t.peakHour)}</div>
+        <div class="mt-6 lg:mt-8 flex justify-center">${generateClockSVG(t.hourlyHeatmap, t.peakHour)}</div>
+      </div>
+    </div>
+
+    <!-- STORY 9: Day of Week -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/calendar.jpg');"></div>
+      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-6">YOUR DAY</div>
+        <div class="text-5xl lg:text-8xl mb-2 lg:mb-4">${dayPersona.emoji}</div>
+        <div class="text-[7vw] lg:text-[5vw] font-extrabold leading-tight mb-2 lg:mb-4">${dayPersona.name}</div>
+        <div class="text-sm lg:text-xl opacity-60 mb-6 lg:mb-10">${dayPersona.tagline}</div>
+        <div class="flex items-end justify-center gap-2 lg:gap-4 h-24 lg:h-32 max-w-[350px] lg:max-w-[500px] mx-auto">
+          ${dayStats.map((d, i) => `
+            <div class="flex flex-col items-center gap-1 flex-1">
+              <div class="w-full bg-white/80 transition-all" style="height: ${Math.max(8, d.percent * 1.2)}px; ${i === peakDayIndex ? 'background: white;' : 'opacity: 0.4;'}"></div>
+              <span class="text-[10px] lg:text-sm ${i === peakDayIndex ? 'font-bold' : 'opacity-50'}">${d.day}</span>
+              <span class="text-[9px] lg:text-xs ${i === peakDayIndex ? 'font-bold' : 'opacity-40'}">${d.percent}%</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 10: Streak -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-green overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/streak.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40"></div>
+      <div class="relative z-10 text-center px-4 lg:px-8 w-full max-w-md lg:max-w-xl">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-4 lg:mb-6">LONGEST STREAK</div>
+        <div class="text-[18vw] lg:text-[12vw] font-extrabold leading-none">${m.longestStreak}</div>
+        <div class="text-lg lg:text-3xl font-extrabold tracking-[0.2em] mt-1 lg:mt-4">DAYS</div>
+        <div class="text-xs lg:text-lg opacity-70 mt-2 lg:mt-4 mb-4 lg:mb-6">straight with Claude</div>
+        <div class="text-[10px] lg:text-xs opacity-60 mb-2 tracking-wider">LAST 30 DAYS</div>
+        <div class="grid grid-cols-7 gap-1 lg:gap-1.5 max-w-[280px] lg:max-w-[350px] mx-auto">
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">S</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">M</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">T</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">W</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">T</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">F</div>
+          <div class="text-[8px] lg:text-[10px] opacity-40 text-center">S</div>
+          ${generateHeatmap(t.dailyActivity)}
+        </div>
+        <div class="flex items-center justify-center gap-2 lg:gap-3 mt-4 lg:mt-6 text-[8px] lg:text-xs opacity-60">
+          <span>Less</span>
+          <span class="w-3 h-3 lg:w-4 lg:h-4 bg-white/10"></span>
+          <span class="w-3 h-3 lg:w-4 lg:h-4 bg-white/30"></span>
+          <span class="w-3 h-3 lg:w-4 lg:h-4 bg-white/50"></span>
+          <span class="w-3 h-3 lg:w-4 lg:h-4 bg-white/75"></span>
+          <span class="w-3 h-3 lg:w-4 lg:h-4 bg-white"></span>
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 11: Persona Reveal -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-90" style="background-image: url('${IMG_BASE}/personas/commander.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70"></div>
+      <div class="relative z-10 text-center px-8 animate-persona">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-10">YOU ARE</div>
+        <div class="text-7xl lg:text-[150px] mb-4 lg:mb-8">${c.personaEmoji}</div>
+        <div class="text-[11vw] lg:text-[9vw] font-extrabold leading-none">${c.personaName}</div>
+      </div>
+    </div>
+
+    <!-- STORY 12: Persona Description -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/description.jpg');"></div>
+      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="text-5xl lg:text-8xl mb-3 lg:mb-6">${c.personaEmoji}</div>
+        <div class="inline-block bg-white text-brutal-black px-3 py-1.5 lg:px-6 lg:py-3 text-xs lg:text-base tracking-[0.3em] font-bold mb-3 lg:mb-6">${c.personaName}</div>
+        <div class="text-lg lg:text-3xl italic mb-3 lg:mb-6 opacity-90">"${c.personaTagline}"</div>
+        <div class="text-sm lg:text-xl leading-relaxed max-w-[300px] lg:max-w-[600px] mx-auto opacity-80">${c.personaDesc}</div>
+      </div>
+    </div>
+
+    <!-- STORY 13: Roast -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-red overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-40" style="background-image: url('${IMG_BASE}/festive/roast.jpg');"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-10">ROAST</div>
+        <div class="text-lg lg:text-3xl leading-relaxed max-w-[320px] lg:max-w-[700px] mx-auto font-medium">${c.roast}</div>
+      </div>
+    </div>
+
+    <!-- STORY 14: Hype -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-green overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/gift.jpg');"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-10">BUT ALSO</div>
+        <div class="text-lg lg:text-3xl leading-relaxed max-w-[320px] lg:max-w-[700px] mx-auto font-medium">${c.hype}</div>
+      </div>
+    </div>
+
+    <!-- STORY 15: Stats -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-50" style="background-image: url('${IMG_BASE}/festive/stats.jpg');"></div>
+      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-2 lg:mb-4">PAST 30 DAYS</div>
+        <div class="text-sm lg:text-lg opacity-60 mb-4 lg:mb-8">by the numbers</div>
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-0.5 lg:gap-1 bg-white max-w-[300px] lg:max-w-[800px] mx-auto">
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${formatNumber(m.totalPrompts)}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">PROMPTS</div>
+          </div>
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${formatNumber(m.totalResponses)}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">RESPONSES</div>
+          </div>
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${formatNumber(m.linesWritten)}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">LINES</div>
+          </div>
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${formatNumber(m.filesCreated)}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">FILES</div>
+          </div>
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${formatNumber(m.totalSessions)}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">SESSIONS</div>
+          </div>
+          <div class="bg-brutal-black p-3 lg:p-8 text-center">
+            <div class="text-xl lg:text-5xl font-extrabold">${m.longestStreak}</div>
+            <div class="text-[9px] lg:text-sm tracking-wider opacity-60 mt-1 lg:mt-3">DAY STREAK</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 16: Summary -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-40" style="background-image: url('${IMG_BASE}/festive/summary.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70"></div>
+      <div class="relative z-10 text-center px-6 lg:px-16 py-12 max-h-[85vh] overflow-y-auto">
+        <div class="mb-8 lg:mb-12">
+          <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold">YOUR 2025</div>
+        </div>
+        <div class="max-w-[600px] lg:max-w-[800px] mx-auto">
+          <div class="text-lg lg:text-2xl leading-loose lg:leading-loose text-center font-medium">${c.summary}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY 17: End -->
+    <div class="story absolute inset-0 flex items-center justify-center bg-brutal-black overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center opacity-90" style="background-image: url('${IMG_BASE}/personas/goodbye.jpg');"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70"></div>
+      <div class="relative z-10 text-center px-8">
+        <div class="inline-block bg-white text-brutal-black px-4 py-2 lg:px-8 lg:py-4 text-xs lg:text-base tracking-[0.3em] font-bold mb-6 lg:mb-10">COMPILED</div>
+        <div class="text-[20vw] lg:text-[18vw] font-extrabold leading-none">2025</div>
+        <div class="text-sm lg:text-2xl opacity-70 mt-4 lg:mt-8">See you next year</div>
+        <button class="mt-8 lg:mt-12 bg-white text-brutal-black px-8 py-4 lg:px-12 lg:py-6 font-extrabold text-base lg:text-xl tracking-wider hover:bg-brutal-red hover:text-white transition-colors cursor-pointer" onclick="shareStory()">SHARE</button>
+      </div>
+    </div>
+      `;
+    }
+
+    // Initialize stories navigation
+    function initStories() {
+      const stories = document.querySelectorAll('.story');
+      const progress = document.getElementById('progress');
+      const indicatorsContainer = document.getElementById('indicators');
+      let currentIndex = 0;
+      const totalStories = stories.length;
+
+      // Create indicators
+      stories.forEach((_, i) => {
+        const indicator = document.createElement('div');
+        indicator.className = 'indicator' + (i === 0 ? ' active' : '');
+        indicatorsContainer.appendChild(indicator);
+      });
+      const indicators = document.querySelectorAll('.indicator');
+
+      function updateProgress() {
+        const percent = ((currentIndex + 1) / totalStories) * 100;
+        progress.style.width = percent + '%';
+        indicators.forEach((ind, i) => {
+          ind.classList.remove('active', 'complete');
+          if (i < currentIndex) ind.classList.add('complete');
+          if (i === currentIndex) ind.classList.add('active');
+        });
+      }
+
+      function goToStory(index) {
+        if (index < 0 || index >= totalStories) return;
+        stories[currentIndex].classList.remove('active');
+        currentIndex = index;
+        stories[currentIndex].classList.add('active');
+        updateProgress();
+      }
+
+      function nextStory() { if (currentIndex < totalStories - 1) goToStory(currentIndex + 1); }
+      function prevStory() { if (currentIndex > 0) goToStory(currentIndex - 1); }
+
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        const x = e.clientX;
+        if (x < window.innerWidth * 0.3) prevStory();
+        else nextStory();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextStory(); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStory(); }
+      });
+
+      let touchStartX = 0;
+      document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+      document.addEventListener('touchend', (e) => {
+        const diffX = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diffX) > 50) { diffX > 0 ? nextStory() : prevStory(); }
+      });
+
+      updateProgress();
+    }
+
+    // Share function
+    function shareStory() {
+      if (navigator.share) {
+        navigator.share({ title: 'My 2025 Compiled', text: 'Check out my year coding with Claude!', url: window.location.href });
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Link copied!');
+      }
+    }
+
+    // Main init
+    document.addEventListener('DOMContentLoaded', () => {
+      const data = decodeData();
+
+      if (!data) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+        return;
+      }
+
+      // Render stories
+      document.getElementById('stories').innerHTML = generateStories(data);
+
+      // Hide loading, init navigation
+      document.getElementById('loading').classList.add('hidden');
+      initStories();
+    });
+  </script>
+</body>
+</html>
