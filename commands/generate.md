@@ -17,7 +17,7 @@ User args: $ARGUMENTS
 
 1. Find the plugin directory, ensure Bun is installed, install dependencies, and run the analysis (ALL IN ONE COMMAND):
    ```bash
-   /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && [ -d "$PLUGIN_DIR" ] && echo "PLUGIN_DIR=$PLUGIN_DIR" && command -v bun >/dev/null || curl -fsSL https://bun.sh/install | bash && cd "$PLUGIN_DIR" && bun install && bun run src/index.ts --no-judge '"$ARGUMENTS"''
+   /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && [ -d "$PLUGIN_DIR" ] && echo "PLUGIN_DIR=$PLUGIN_DIR" && (command -v bun >/dev/null || { curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH"; }) && cd "$PLUGIN_DIR" && bun install && bun run src/index.ts --no-judge '"$ARGUMENTS"''
    ```
 
 2. Use the Read tool to read `$PLUGIN_DIR/output/wrapped-2025/data.json` - this contains all the user's stats (prompts, lines, languages, etc).
