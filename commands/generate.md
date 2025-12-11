@@ -10,6 +10,7 @@ Generate a personalized year-in-review of your Claude Code usage.
 
 ## Arguments
 - `--all`: Analyze all found .claude directories without prompting
+- `--local`: Open in localhost instead of production URL (for development)
 
 User args: $ARGUMENTS
 
@@ -148,14 +149,14 @@ User args: $ARGUMENTS
    }
    ```
 
-6. **OPEN IN BROWSER**: Generate the share URL and open it directly:
+6. **OPEN IN BROWSER**: Check if user passed `--local` in their arguments ($ARGUMENTS).
+
+   **If `--local` is NOT in arguments** (default - production):
    ```bash
    /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && cd "$PLUGIN_DIR" && node static/generate-url.cjs output/wrapped-2025/share-data.json'
    ```
 
-   This opens `https://2025compiled.com/shared?d=...` directly in the browser.
-
-   **For local development only** (use `--local` flag): If the user passes `--local`, start a local server instead:
+   **If `--local` IS in arguments** (local development):
    ```bash
    /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && cd "$PLUGIN_DIR/static" && pkill -f "python3 -m http.server 8025" 2>/dev/null; python3 -m http.server 8025 &>/dev/null & sleep 1 && cd "$PLUGIN_DIR" && node static/generate-url.cjs output/wrapped-2025/share-data.json --local'
    ```
