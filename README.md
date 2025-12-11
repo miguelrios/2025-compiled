@@ -17,6 +17,10 @@ Made by **Miguel @ [Parcha.ai](https://parcha.ai)** — props to [Abe Diaz](http
 /2025-compiled:generate
 ```
 
+### Options
+- `--all`: Analyze all .claude directories without prompting
+- `--local`: Open in localhost instead of production (for development)
+
 ## What You Get
 
 Brutalist Instagram Stories showing your year:
