@@ -65,18 +65,23 @@ const encoded = compressed.toString('base64')
   .replace(/=+$/, '');
 
 // Generate URL
-const baseUrl = 'https://blog.parcha.dev/static/2025-compiled';
-const localUrl = 'file://' + path.join(__dirname, 'index.html');
+const isLocal = process.argv.includes('--local');
+const baseUrl = isLocal ? 'http://localhost:8025' : 'https://2025compiled.com/shared';
+const shareUrl = `${baseUrl}?d=${encoded}`;
 
-console.log('\n📊 Data size:');
-console.log(`   Raw JSON: ${JSON.stringify(data).length} bytes`);
-console.log(`   Compressed: ${compressed.length} bytes`);
-console.log(`   Base64: ${encoded.length} bytes`);
-
-console.log('\n🔗 Share URLs:\n');
-console.log(`Production: ${baseUrl}?d=${encoded}`);
-console.log(`\nLocal test: ${localUrl}?d=${encoded}`);
-
-// Also output just the encoded data for copy/paste
-console.log('\n📋 Encoded data (for manual URL building):');
-console.log(encoded);
+// Open directly in browser
+try {
+  const { execSync } = require('child_process');
+  const platform = process.platform;
+  if (platform === 'darwin') {
+    execSync(`open "${shareUrl}"`);
+  } else if (platform === 'win32') {
+    execSync(`start "" "${shareUrl}"`);
+  } else {
+    execSync(`xdg-open "${shareUrl}"`);
+  }
+  console.log(isLocal ? '\n🔧 Opening local preview...' : '\n🎄 Opening your 2025 Compiled in browser...');
+} catch (e) {
+  console.log('\n🔗 Share URL:');
+  console.log(shareUrl);
+}

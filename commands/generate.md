@@ -148,25 +148,18 @@ User args: $ARGUMENTS
    }
    ```
 
-6. **START LOCAL SERVER AND OPEN**: Start a Python HTTP server and open the report in browser with encoded data:
+6. **OPEN IN BROWSER**: Generate the share URL and open it directly:
    ```bash
-   /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && cd "$PLUGIN_DIR/static" && pkill -f "python3 -m http.server 8025" 2>/dev/null; python3 -m http.server 8025 &>/dev/null & sleep 1 && cd "$PLUGIN_DIR" && node -e "
-   const fs = require(\"fs\");
-   const zlib = require(\"zlib\");
-   const data = JSON.parse(fs.readFileSync(\"output/wrapped-2025/share-data.json\", \"utf8\"));
-   const compressed = zlib.gzipSync(JSON.stringify(data));
-   const encoded = compressed.toString(\"base64\").replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+\$/g, \"\");
-   const localUrl = \"http://localhost:8025?d=\" + encoded;
-   const shareUrl = \"https://2025compiled.com/shared?d=\" + encoded;
-   console.log(\"LOCAL: \" + localUrl);
-   console.log(\"SHARE: \" + shareUrl);
-   fs.writeFileSync(\"output/wrapped-2025/share-url.txt\", shareUrl);
-   const { execSync } = require(\"child_process\");
-   execSync(\"open \\\"\" + localUrl + \"\\\"\");
-   "'
+   /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && cd "$PLUGIN_DIR" && node static/generate-url.cjs output/wrapped-2025/share-data.json'
+   ```
+
+   This opens `https://2025compiled.com/shared?d=...` directly in the browser.
+
+   **For local development only** (use `--local` flag): If the user passes `--local`, start a local server instead:
+   ```bash
+   /bin/bash -c 'PKG=$(find ~/.claude/plugins -type f -name "package.json" -path "*cache*" -path "*2025-compiled*" ! -path "*/node_modules/*" 2>/dev/null | head -1) && PLUGIN_DIR=$(dirname "$PKG") && cd "$PLUGIN_DIR/static" && pkill -f "python3 -m http.server 8025" 2>/dev/null; python3 -m http.server 8025 &>/dev/null & sleep 1 && cd "$PLUGIN_DIR" && node static/generate-url.cjs output/wrapped-2025/share-data.json --local'
    ```
 
 7. **SHARE WITH THE USER**:
    - Show their vibe, a funny quote from their prompts, and one impressive stat
-   - **IMPORTANT**: Display the share URL so they can copy it
    - Tell them: "Share this URL with friends - it works anywhere, no login needed!"
