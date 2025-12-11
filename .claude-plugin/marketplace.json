@@ -12,10 +12,7 @@
     {
       "name": "2025-compiled",
       "description": "Your 2025 Compiled - a Spotify Wrapped-style year-in-review of your Claude Code usage",
-      "source": "./",
-      "skills": [
-        "./skills/compiled"
-      ]
+      "source": "../"
     }
   ]
 }
