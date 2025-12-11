@@ -33,7 +33,7 @@ Brutalist Instagram Stories showing your year:
 
 ## Sharing
 
-You get a URL like `https://blog.parcha.dev/static/2025-compiled-shared?d=H4sIAAAA...`
+You get a URL like `https://2025compiled.com/shared?d=H4sIAAAA...`
 
 Your data is gzip'd and base64'd directly into the URL. The `?d=` param IS your data. The hosted page is just static HTML that decodes whatever's in the URL - no backend, no database, no storage. Long URLs, but zero server trust.
 

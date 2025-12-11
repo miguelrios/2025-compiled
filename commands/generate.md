@@ -157,7 +157,7 @@ User args: $ARGUMENTS
    const compressed = zlib.gzipSync(JSON.stringify(data));
    const encoded = compressed.toString(\"base64\").replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+\$/g, \"\");
    const localUrl = \"http://localhost:8025?d=\" + encoded;
-   const shareUrl = \"https://blog.parcha.dev/static/2025-compiled-shared?d=\" + encoded;
+   const shareUrl = \"https://2025compiled.com/shared?d=\" + encoded;
    console.log(\"LOCAL: \" + localUrl);
    console.log(\"SHARE: \" + shareUrl);
    fs.writeFileSync(\"output/wrapped-2025/share-url.txt\", shareUrl);
