@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "compiled2025",
+      "name": "2025-compiled",
       "description": "Your 2025 Compiled - a Spotify Wrapped-style year-in-review of your Claude Code usage",
       "version": "1.0.0",
       "author": {
