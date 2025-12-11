@@ -12,7 +12,14 @@
     {
       "name": "2025-compiled",
       "description": "Your 2025 Compiled - a Spotify Wrapped-style year-in-review of your Claude Code usage",
-      "source": "../"
+      "version": "1.0.0",
+      "author": {
+        "name": "Miguel Rios @ Parcha.ai"
+      },
+      "source": "./",
+      "category": "analytics",
+      "tags": ["compiled", "wrapped", "statistics", "visualization", "year-in-review", "2025"],
+      "keywords": ["compiled", "wrapped", "analytics", "productivity"]
     }
   ]
 }
