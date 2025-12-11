@@ -8,7 +8,7 @@ Made by **Miguel @ [Parcha.ai](https://parcha.ai)** — props to [Abe Diaz](http
 
 ```bash
 /plugin marketplace add miguelrios/2025-compiled
-/plugin install compiled2025
+/plugin install 2025-compiled
 ```
 
 ## Run
